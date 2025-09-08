@@ -1,10 +1,12 @@
 package com.example.videoplayer
 
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.example.videoplayer.databinding.ActivityPlayerBinding
 import com.google.android.exoplayer2.ExoPlayer
@@ -14,30 +16,40 @@ import com.google.android.exoplayer2.util.Util
 class PlayerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPlayerBinding
-
     private var player: ExoPlayer? = null
-
-    private val videoUrl = "https://storage.googleapis.com/exoplayer-test-media-0/BigBuckBunny_320x180.mp4"
 
     private var playWhenReady = true
     private var currentWindow = 0
     private var playbackPosition = 0L
 
+    private val selectVideoLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            initializePlayer(uri)
+            binding.selectVideoButton.visibility = View.GONE
+            binding.playerView.visibility = View.VISIBLE
+        }
+    }
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityPlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.selectVideoButton.setOnClickListener {
+            selectVideoLauncher.launch("video/*")
+        }
     }
 
-    private fun initializePlayer() {
+    private fun initializePlayer(videoUri: Uri) {
         player = ExoPlayer.Builder(this)
             .build()
             .also { exoPlayer ->
                 binding.playerView.player = exoPlayer
-
-                val mediaItem = MediaItem.fromUri(videoUrl)
+                val mediaItem = MediaItem.fromUri(videoUri)
                 exoPlayer.setMediaItem(mediaItem)
-
                 exoPlayer.playWhenReady = playWhenReady
                 exoPlayer.seekTo(currentWindow, playbackPosition)
                 exoPlayer.prepare()
@@ -49,7 +61,6 @@ class PlayerActivity : AppCompatActivity() {
             playbackPosition = exoPlayer.currentPosition
             currentWindow = exoPlayer.currentMediaItemIndex
             playWhenReady = exoPlayer.playWhenReady
-            // Release the player.
             exoPlayer.release()
         }
         player = null
@@ -74,8 +85,7 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        if (Util.SDK_INT >= 24) {
-            initializePlayer()
+        if (Util.SDK_INT >= 24 && player != null) {
         }
     }
 
@@ -83,7 +93,6 @@ class PlayerActivity : AppCompatActivity() {
         super.onResume()
         hideSystemUi()
         if ((Util.SDK_INT < 24 || player == null)) {
-            initializePlayer()
         }
     }
 
@@ -101,3 +110,4 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 }
+
